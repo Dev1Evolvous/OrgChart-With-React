@@ -28,7 +28,7 @@
     "@uifabric/example-data": "^7.0.1",
     "array-to-tree": "^3.3.0",
     "font-awesome": "^4.7.0",
-    "jquery": "^2.2.4",
+    "jquery": "^3.4.0",
     "office-ui-fabric-react": "^7.49.0",
     "react": "16.8.5",
     "react-dom": "16.8.5",
