@@ -1,0 +1,20 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "organisational-chart-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/organisationalChart/OrganisationalChartWebPart.js",
+          "manifest": "./src/webparts/organisationalChart/OrganisationalChartWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "OrganisationalChartWebPartStrings": "lib/webparts/organisationalChart/loc/{locale}.js",
+    "ControlStrings": "node_modules/@pnp/spfx-controls-react/lib/loc/{locale}.js",
+    "PropertyControlStrings": "node_modules/@pnp/spfx-property-controls/lib/loc/{locale}.js"
+  }
+}
