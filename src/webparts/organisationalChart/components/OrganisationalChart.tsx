@@ -124,7 +124,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                       scale={1}
                       onDrag={this.handleDrag}>
                       <OrgChart style={{ cursor: "move" }} tree={this.state.orgChartItems}
-                        NodeComponent={this.MyNodeComponent} />
+                        NodeComponent={this.OrgChartNodeComponent} />
                     </Draggable>
                   </div>
                 </div>
@@ -178,13 +178,15 @@ export default class OrganisationalChart extends React.Component<IOrganisational
       controlledPosition: {
         x: -400, y: 200
       },
-      StateChartItemGUIDNode: []
+      StateChartItemGUIDNode: [],
+      DirectReportUser: [],
+      ParentId: 0
     };
 
     this.processOrgChartItems();
   }
 
-  private MyNodeComponent = ({ node }) => {
+  private OrgChartNodeComponent = ({ node }) => {
 
     if (node.Id == 0) {
       return (
@@ -289,11 +291,9 @@ export default class OrganisationalChart extends React.Component<IOrganisational
 
 
   private userExists(EmpEmail) {
-    //return this.state.OrgChartNodesArray.some((el) => {
-    debugger;
-    return this.state.StateChartItemGUIDNode.some((el) => {
-      debugger;
 
+    //return this.state.OrgChartNodesArray.some((el) => {
+    return this.state.StateChartItemGUIDNode.some((el) => {
       return el["EmpEmail"] === EmpEmail;
     });
   }
@@ -431,273 +431,355 @@ export default class OrganisationalChart extends React.Component<IOrganisational
   }
 
   private async processManagerNextDownUser(event, userId) {
-
-    //alert("Hi" + event);
+    debugger;
     await this.setState({
       ManagerNextDownUser: "i:0#.f|membership|" + event
     });
     this.readOrgChartItemsNextDownUserID().then((orgChartItemsOutter: IOrgChartItem[]) => {
       // logic will apply
-
       let peers = orgChartItemsOutter["DirectReports"];
-      peers.forEach((elementRow) => {
+      // var index = peers.map(x => {
+      //   return x;
+      // }).indexOf(this.state.ManagerNextDownUser);
+      
+      // peers.splice(index, 1);
+      
+      debugger;
 
-        this.readOrgChartItemsDownUser(elementRow, userId)
-          .then((orgChartItems: IOrgChartItem[]): void => {
-
-            debugger;
-            var result = [];
-            jquery.each(this.state.StateChartItemGUIDNode, (i, e) => {
-              var matchingItems = jquery.grep(result, (item) => {
-                return item["EmpEmail"] === e["EmpEmail"];
+      this.setState({ DirectReportUser: peers });
+      if (peers.length > 0) {
+        peers.forEach((elementRow) => {
+          this.readOrgChartItemsDownUser(elementRow, userId)
+            .then((orgChartItems: ChartItem[]): void => {
+              let parent_guid: number;
+              var result = [];
+              jquery.each(this.state.StateChartItemGUIDNode, (ii, e) => {
+                var matchingItems = jquery.grep(result, (item) => {
+                  return item["EmpEmail"] === e["EmpEmail"];
+                });
+                if (matchingItems.length === 0) result.push(e);
               });
-              if (matchingItems.length === 0) result.push(e);
-            });
 
-            if (result.length > 0) {
-              this.setState({ StateChartItemGUIDNode: result });
-            }
+              if (result.length > 0) {
+                this.setState({ StateChartItemGUIDNode: result });
+              }
 
+              let count = 0;
+              let orgChartNodes: Array<ChartItem> = [];
+              for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
 
+                //peers.forEach((elementRow)=>{
 
-            debugger;
-            let count = 0;
-            let orgChartNodes: Array<ChartItem> = [];
-            for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
+                orgChartNodes.push(new ChartItem(
+                  this.state.StateChartItemGUIDNode[count]["id"],
+                  this.state.StateChartItemGUIDNode[count]["title"],
+                  this.state.StateChartItemGUIDNode[count]["Url"],
+                  this.state.StateChartItemGUIDNode[count]["parent_id"],
+                  this.state.StateChartItemGUIDNode[count]["JobTitle"],
+                  "Manager",
+                  this.state.StateChartItemGUIDNode[count]["Department"],
+                  this.state.StateChartItemGUIDNode[count]["EmpEmail"]
+                ));
+
+                parent_guid = this.state.ParentId;
+
+                //});
+                //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
+                // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+                //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+              }
               debugger;
 
-              // this.userExists(this.state.StateChartItemGUIDNode[count]["EmpEmail"])
-              orgChartNodes.push(new ChartItem(
-                this.state.StateChartItemGUIDNode[count]["id"],
-                this.state.StateChartItemGUIDNode[count]["title"],
-                this.state.StateChartItemGUIDNode[count]["Url"],
-                this.state.StateChartItemGUIDNode[count]["parent_id"],
-                this.state.StateChartItemGUIDNode[count]["JobTitle"],
-                "Manager",
-                this.state.StateChartItemGUIDNode[count]["Department"],
-                this.state.StateChartItemGUIDNode[count]["EmpEmail"]
-              ));
+              count = 0;
+              let imgURL: string;
+              let userName: string;
+              let guid: string;
+              let jobTitle: string;
+              let emailID: string;
+              let managers: string;
+              let department: string;
+              let peersInner: any;
+              let ID: number;
+
+              debugger;
+              let properties = orgChartItems["UserProfileProperties"];
+
+              if (!this.userExists(orgChartItems["Email"])) {
+
+                for (var i = 0; i < properties.length; i++) {
+
+                  var property = properties[i];
+                  if (property.Key == "WorkEmail") {
+                    emailID = property.Value;
+                  }
+                  if (property.Key == "WorkEmail") {
+                    imgURL = `${profileURL}/_vti_bin/DelveApi.ashx/people/profileimage?userId=${property.Value}`;
+                  }
+                  if (property.Key == "PreferredName") {
+                    userName = property.Value;
+                  }
+                  if (property.Key == "UserProfile_GUID") {
+                    guid = property.Value;
+                  }
+                  if (property.Key == "SPS-JobTitle") {
+                    jobTitle = property.Value;
+                  }
+                  if (property.Key == "Department") {
+                    department = property.Value;
+                  }
+                  if (property.Key == "SPS-SharePointHomeExperienceState") {
+                    ID = property.Value;
+                  }
+                }
+
+                orgChartNodes.push(new ChartItem(
+                  ID,
+                  userName,
+                  imgURL,
+                  parent_guid,
+                  jobTitle,
+                  "Managers",
+                  department,
+                  emailID
+                ));
+              }
+
+              else {
+                orgChartNodes = orgChartNodes.filter((item) =>
+                  item.EmpEmail !== orgChartItems["Email"] );
+                debugger;
+
+                // var index = orgChartNodes.map(x => {
+                //   return x.parent_id;
+                // }).indexOf(this.state.ParentId);
+
+                // orgChartNodes.splice(index, 1);
+              }
+
+              this.setState({ StateChartItemGUIDNode: orgChartNodes });
+              debugger;
+
+              // this.state.DirectReportUser.forEach((elementRow) => {
+              //   orgChartNodes = jquery.grep(orgChartNodes, (value) =>{
+              //     return value != elementRow;
+              //   });
+              // });
+
+              console.log(orgChartNodes);
+
+              //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+              //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+              this.setState({ OrgChartNodesArray: orgChartNodes });
+              console.log("2: " + this.state.OrgChartNodesArray);
+              //this.CountDepthLevel(orgChartNodes);
+
+              var arrayToTree: any = require('array-to-tree');
+              var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
+
+              var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
+              this.setState({
+                orgChartItems: JSON.parse(output)
+              });
 
 
-              //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
-              // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-              //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-            }
+              //#region 
+              // let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
 
-            debugger;
-            console.log(orgChartNodes);
+              // let orgChartNodes: Array<ChartItem> = [];
+              // var count: number;
+              // if (orgChartItems.length > 0) {
 
-            //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-            //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
-            this.setState({ OrgChartNodesArray: orgChartNodes });
-            console.log("2: " + this.state.OrgChartNodesArray);
-            //this.CountDepthLevel(orgChartNodes);
+              //   for (count = 0; count < this.state.OrgChartNodesArray.length; count++) {
 
-            var arrayToTree: any = require('array-to-tree');
-            var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
+              //     orgChartNodes.push(new ChartItem(
+              //       this.state.OrgChartNodesArray[count]["id"],
+              //       this.state.OrgChartNodesArray[count]["title"],
+              //       //this.state.OrgChartNodesArray[count].Url,
+              //       "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
+
+              //       this.state.OrgChartNodesArray[count]["parent_id"] != undefined ?
+              //         this.state.OrgChartNodesArray[count]["parent_id"] : undefined,
+
+              //       this.state.OrgChartNodesArray[count]["JobTitle"],
+              //       this.state.OrgChartNodesArray[count]["Manager"],
+              //       this.state.OrgChartNodesArray[count]["Department"],
+              //       this.state.OrgChartNodesArray[count]["EmpEmail"]
+              //     ));
+
+              //     // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //     //   `CollapseContentSingle${this.state.OrgChartNodesArray[count].id}`,
+              //     //   "StockDown"));
+
+              //     //this.setState({ StockDownUserId: `CollapseContentSingle${userId}` });
+              //     //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+              //   }
+              //   count = 0;
+              //   for (count = 0; count < orgChartItems.length; count++) {
+
+              //     // orgChartItems.forEach((row) => {
+              //     //   orgChartNodes.push(new ChartItem(
+              //     //     row.Id,
+              //     //     row["Title"],
+              //     //     row.Url,
+              //     //     row.Managers ? row.Managers.ID : undefined,
+              //     //     row["JobTitle"],
+              //     //     row["Manager"],
+              //     //     row["Department"],
+              //     //     row["EmpEmail"]));
+              //     // });
+
+              //     // Check already exist of not
+              //     // this.state.OrgChartNodesArray.some((el) => {
+
+              //     //   return el["EmpEmail"] === orgChartItems[count]["EmpEmail"];
+              //     // });
 
 
-            var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
-            this.setState({
-              orgChartItems: JSON.parse(output)
+              //     if (!this.userExists(orgChartItems[count]["EmpEmail"])) {
+              //       orgChartNodes.push(new ChartItem(
+              //         orgChartItems[count].Id,
+              //         orgChartItems[count]["Title"],
+              //         "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
+
+              //         //orgChartItems[count].Url,
+              //         orgChartItems[count].Managers ? orgChartItems[count].Managers.ID : undefined,
+              //         orgChartItems[count]["JobTitle"],
+              //         orgChartItems[count]["Manager"],
+              //         orgChartItems[count]["Department"],
+              //         orgChartItems[count]["EmpEmail"]
+              //       ));
+
+
+
+              //       if (this.state.ManagerSetIdForExpand === orgChartItems[count].Id)
+              //         orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //           `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+              //       // else {
+              //       //   orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //       //     `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+              //       // }
+              //       //this.setState({ StockDownUserId: `#StockDown${userId}` });
+              //       //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+
+              //     }
+              //     else {
+              //       orgChartNodes = orgChartNodes.filter((item) =>
+              //         item.EmpEmail !== orgChartItems[count]["EmpEmail"]
+              //       );
+
+
+              //       if (this.state.ManagerSetIdForExpand === orgChartItems[count].Id)
+              //         orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //           `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+              //       //#region 
+              //       // else {
+              //       //   orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //       //     `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+              //       // }
+
+
+              //       //this.setState({ StockDownUserId: `#StockDown${userId}` });
+              //       //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+              //       //#endregion
+              //     }
+              //   }
+              //   //#region
+              //   // else {
+
+              //   //   orgChartNodes.push(new ChartItem(
+              //   //     orgChartItemsOutter[0].Id,
+              //   //     orgChartItemsOutter[0]["Title"],
+              //   //     null,
+              //   //     undefined,
+              //   //     orgChartItemsOutter[0]["JobTitle"],
+              //   //     orgChartItemsOutter[0]["Manager"],
+              //   //     orgChartItemsOutter[0]["Department"],
+              //   //     orgChartItemsOutter[0]["EmpEmail"]));
+
+              //   //   for (count = 0; count < orgChartItems.length; count++) {
+
+              //   //     orgChartNodes.push(new ChartItem(
+              //   //       orgChartItems[count].Id,
+              //   //       orgChartItems[count]["Title"],
+              //   //       orgChartItems[count].Url,
+              //   //       orgChartItems[count].Managers ? orgChartItems[count].Managers.ID : undefined,
+              //   //       orgChartItems[count]["JobTitle"],
+              //   //       orgChartItems[count]["Manager"],
+              //   //       orgChartItems[count]["Department"],
+              //   //       orgChartItems[count]["EmpEmail"]
+              //   //     ));
+              //   //   }
+              //   // }
+              //   //#endregion
+              // }
+
+              // let orgChartHoldNodesArrowTemp: Array<HoldChartItemArrow> = [];
+              // orgChartHoldNodesArrowTemp = this.state.StockDownUserIdValue;
+
+              // if (orgChartHoldNodesArrow.length > 0) {
+              //   //#region 
+              //   // if (this.userExists(`#CollapseContentSingle${orgChartHoldNodesArrow[0].nodeId}`)) {
+              //   //   orgChartNodes = orgChartNodes.filter((item) =>
+              //   //       item.EmpEmail !== orgChartItems[count]["EmpEmail"]
+              //   //     );
+              //   // }
+              //   //#endregion
+
+              //   orgChartHoldNodesArrowTemp.push(new HoldChartItemArrow(
+              //     `#CollapseContentSingle${orgChartHoldNodesArrow[0].nodeId}`, "StockDown"));
+              // }
+              // else {
+
+              //   orgChartHoldNodesArrowTemp.push(new HoldChartItemArrow(
+              //     `#CollapseContentSingle${this.state.ManagerSetIdForExpand}`, "StockDown"));
+              // }
+
+              // this.setState({ StockDownUserIdValue: orgChartHoldNodesArrowTemp });
+
+              // //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+
+
+              // var arrayToTree: any = require('array-to-tree');
+              // let orgChartHierarchyNodes: any;
+              // if (orgChartNodes.length > 0) {
+              //   this.setState({ OrgChartNodesArray: orgChartNodes });
+              //   orgChartHierarchyNodes = arrayToTree(orgChartNodes);
+              //   if (this.state.OrgChartNodesArray.length > 0)
+              //     this.setState({ LoadUpNextUser: this.state.OrgChartNodesArray[0]["EmpEmail"] });
+              //   else {
+              //     this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+              //   }
+
+              // }
+              // else {
+              //   orgChartHierarchyNodes = arrayToTree(this.state.OrgChartNodesArray);
+              //   if (this.state.OrgChartNodesArray.length > 0)
+              //     this.setState({ LoadUpNextUser: this.state.OrgChartNodesArray[0]["EmpEmail"] });
+              //   else {
+              //     this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+              //   }
+
+              // }
+
+              // //var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
+              // //this.convert(orgChartHierarchyNodes);
+
+              // var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
+              // this.pow(orgChartHierarchyNodes[0]);
+
+              // if (output.length > 0)
+              //   this.setState({
+              //     orgChartItems: JSON.parse(output)
+              //   });
+              // //this.setState({ loadUpNext: false });
+              //#endregion
+
             });
-
-            debugger;
-
-            //#region 
-            // let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
-
-            // let orgChartNodes: Array<ChartItem> = [];
-            // var count: number;
-            // if (orgChartItems.length > 0) {
-
-            //   for (count = 0; count < this.state.OrgChartNodesArray.length; count++) {
-
-            //     orgChartNodes.push(new ChartItem(
-            //       this.state.OrgChartNodesArray[count]["id"],
-            //       this.state.OrgChartNodesArray[count]["title"],
-            //       //this.state.OrgChartNodesArray[count].Url,
-            //       "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
-
-            //       this.state.OrgChartNodesArray[count]["parent_id"] != undefined ?
-            //         this.state.OrgChartNodesArray[count]["parent_id"] : undefined,
-
-            //       this.state.OrgChartNodesArray[count]["JobTitle"],
-            //       this.state.OrgChartNodesArray[count]["Manager"],
-            //       this.state.OrgChartNodesArray[count]["Department"],
-            //       this.state.OrgChartNodesArray[count]["EmpEmail"]
-            //     ));
-
-            //     // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //     //   `CollapseContentSingle${this.state.OrgChartNodesArray[count].id}`,
-            //     //   "StockDown"));
-
-            //     //this.setState({ StockDownUserId: `CollapseContentSingle${userId}` });
-            //     //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-            //   }
-            //   count = 0;
-            //   for (count = 0; count < orgChartItems.length; count++) {
-
-            //     // orgChartItems.forEach((row) => {
-            //     //   orgChartNodes.push(new ChartItem(
-            //     //     row.Id,
-            //     //     row["Title"],
-            //     //     row.Url,
-            //     //     row.Managers ? row.Managers.ID : undefined,
-            //     //     row["JobTitle"],
-            //     //     row["Manager"],
-            //     //     row["Department"],
-            //     //     row["EmpEmail"]));
-            //     // });
-
-            //     // Check already exist of not
-            //     // this.state.OrgChartNodesArray.some((el) => {
-
-            //     //   return el["EmpEmail"] === orgChartItems[count]["EmpEmail"];
-            //     // });
-
-
-            //     if (!this.userExists(orgChartItems[count]["EmpEmail"])) {
-            //       orgChartNodes.push(new ChartItem(
-            //         orgChartItems[count].Id,
-            //         orgChartItems[count]["Title"],
-            //         "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
-
-            //         //orgChartItems[count].Url,
-            //         orgChartItems[count].Managers ? orgChartItems[count].Managers.ID : undefined,
-            //         orgChartItems[count]["JobTitle"],
-            //         orgChartItems[count]["Manager"],
-            //         orgChartItems[count]["Department"],
-            //         orgChartItems[count]["EmpEmail"]
-            //       ));
-
-
-
-            //       if (this.state.ManagerSetIdForExpand === orgChartItems[count].Id)
-            //         orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //           `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-            //       // else {
-            //       //   orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //       //     `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-            //       // }
-            //       //this.setState({ StockDownUserId: `#StockDown${userId}` });
-            //       //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-
-            //     }
-            //     else {
-            //       orgChartNodes = orgChartNodes.filter((item) =>
-            //         item.EmpEmail !== orgChartItems[count]["EmpEmail"]
-            //       );
-
-
-            //       if (this.state.ManagerSetIdForExpand === orgChartItems[count].Id)
-            //         orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //           `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-            //       //#region 
-            //       // else {
-            //       //   orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //       //     `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-            //       // }
-
-
-            //       //this.setState({ StockDownUserId: `#StockDown${userId}` });
-            //       //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-            //       //#endregion
-            //     }
-            //   }
-            //   //#region
-            //   // else {
-
-            //   //   orgChartNodes.push(new ChartItem(
-            //   //     orgChartItemsOutter[0].Id,
-            //   //     orgChartItemsOutter[0]["Title"],
-            //   //     null,
-            //   //     undefined,
-            //   //     orgChartItemsOutter[0]["JobTitle"],
-            //   //     orgChartItemsOutter[0]["Manager"],
-            //   //     orgChartItemsOutter[0]["Department"],
-            //   //     orgChartItemsOutter[0]["EmpEmail"]));
-
-            //   //   for (count = 0; count < orgChartItems.length; count++) {
-
-            //   //     orgChartNodes.push(new ChartItem(
-            //   //       orgChartItems[count].Id,
-            //   //       orgChartItems[count]["Title"],
-            //   //       orgChartItems[count].Url,
-            //   //       orgChartItems[count].Managers ? orgChartItems[count].Managers.ID : undefined,
-            //   //       orgChartItems[count]["JobTitle"],
-            //   //       orgChartItems[count]["Manager"],
-            //   //       orgChartItems[count]["Department"],
-            //   //       orgChartItems[count]["EmpEmail"]
-            //   //     ));
-            //   //   }
-            //   // }
-            //   //#endregion
-            // }
-
-            // let orgChartHoldNodesArrowTemp: Array<HoldChartItemArrow> = [];
-            // orgChartHoldNodesArrowTemp = this.state.StockDownUserIdValue;
-
-            // if (orgChartHoldNodesArrow.length > 0) {
-            //   //#region 
-            //   // if (this.userExists(`#CollapseContentSingle${orgChartHoldNodesArrow[0].nodeId}`)) {
-            //   //   orgChartNodes = orgChartNodes.filter((item) =>
-            //   //       item.EmpEmail !== orgChartItems[count]["EmpEmail"]
-            //   //     );
-            //   // }
-            //   //#endregion
-
-            //   orgChartHoldNodesArrowTemp.push(new HoldChartItemArrow(
-            //     `#CollapseContentSingle${orgChartHoldNodesArrow[0].nodeId}`, "StockDown"));
-            // }
-            // else {
-
-            //   orgChartHoldNodesArrowTemp.push(new HoldChartItemArrow(
-            //     `#CollapseContentSingle${this.state.ManagerSetIdForExpand}`, "StockDown"));
-            // }
-
-            // this.setState({ StockDownUserIdValue: orgChartHoldNodesArrowTemp });
-
-            // //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
-
-
-            // var arrayToTree: any = require('array-to-tree');
-            // let orgChartHierarchyNodes: any;
-            // if (orgChartNodes.length > 0) {
-            //   this.setState({ OrgChartNodesArray: orgChartNodes });
-            //   orgChartHierarchyNodes = arrayToTree(orgChartNodes);
-            //   if (this.state.OrgChartNodesArray.length > 0)
-            //     this.setState({ LoadUpNextUser: this.state.OrgChartNodesArray[0]["EmpEmail"] });
-            //   else {
-            //     this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
-            //   }
-
-            // }
-            // else {
-            //   orgChartHierarchyNodes = arrayToTree(this.state.OrgChartNodesArray);
-            //   if (this.state.OrgChartNodesArray.length > 0)
-            //     this.setState({ LoadUpNextUser: this.state.OrgChartNodesArray[0]["EmpEmail"] });
-            //   else {
-            //     this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
-            //   }
-
-            // }
-
-            // //var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
-            // //this.convert(orgChartHierarchyNodes);
-
-            // var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
-            // this.pow(orgChartHierarchyNodes[0]);
-
-            // if (output.length > 0)
-            //   this.setState({
-            //     orgChartItems: JSON.parse(output)
-            //   });
-            // //this.setState({ loadUpNext: false });
-            //#endregion
-
-          });
-      });
+        });
+      }
+      else {
+        alert("No any single reporting colleague");
+      }
     });
   }
 
@@ -736,9 +818,51 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             return response.json();
           })
           .then((response): void => {
-
-
+            debugger;
             // this.setState({ ManagerID: managerID });
+            let imgURL: string;
+            let userName: string;
+            let guid: string;
+            let jobTitle: string;
+            let emailID: string;
+            let managers: string;
+            let department: string;
+            let peers: any;
+            let ID: number;
+
+            debugger;
+            let properties = response.UserProfileProperties;
+
+
+            for (var i = 0; i < properties.length; i++) {
+
+              var property = properties[i];
+              if (property.Key == "WorkEmail") {
+                emailID = property.Value;
+              }
+              if (property.Key == "WorkEmail") {
+                imgURL = `${profileURL}/_vti_bin/DelveApi.ashx/people/profileimage?userId=${property.Value}`;
+              }
+              if (property.Key == "PreferredName") {
+                userName = property.Value;
+              }
+              if (property.Key == "UserProfile_GUID") {
+                guid = property.Value;
+              }
+              if (property.Key == "SPS-JobTitle") {
+                jobTitle = property.Value;
+              }
+              if (property.Key == "Department") {
+                department = property.Value;
+              }
+              if (property.Key == "SPS-SharePointHomeExperienceState") {
+                ID = property.Value;
+              }
+            }
+            debugger;
+
+            this.setState({ ParentId: ID });
+
             // console.log(this.state.ManagerID)
 
             resolve(response);
@@ -747,14 +871,14 @@ export default class OrganisationalChart extends React.Component<IOrganisational
           }));
   }
 
-  private async readOrgChartItemsDownUser(managerEmailID, userID): Promise<IOrgChartItem[]> {
+  private async readOrgChartItemsDownUser(managerEmailID, userID): Promise<ChartItem[]> {
 
     let url = "" + this.props.pageContext.web.absoluteUrl
       + "/_api/SP.UserProfiles.PeopleManager/GetPropertiesFor(accountName=@v)?@v='"
       + encodeURIComponent('' + managerEmailID + '') + "'";
 
     let managerEmailID1 = "charan.sodhi@evolvous.com";
-    return await new Promise<IOrgChartItem[]>(
+    return await new Promise<ChartItem[]>(
       (resolve, reject) =>
         //fetch(`/_api/search/query?querytext='(accountname:*${terms}*)'&rowlimit=10&sourceid='b09a7990-05ea-4af9-81ef-edfab16c4e31'`,
         fetch(url,
@@ -776,11 +900,13 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             return response.json();
           })
           .then((response): void => {
-
+            debugger;
 
             //var userDisplayName = response.d.DisplayName;
             //var AccountName = response.d.AccountName;
             let orgChartNodes: Array<ChartItem> = [];
+            let ChartItemIDNode: Array<ChartItem> = [];
+
             let imgURL: string;
             let userName: string;
             let guid: string;
@@ -794,11 +920,10 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             let properties = response.UserProfileProperties;
             peers = response.Peers;
             let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
-            let ChartItemGUIDNode: Array<ChartItemGUID> = [];
-            let ChartItemGUIDNode1: Array<IOrgChartItem> = [];
+            let ChartItemGUIDNode: Array<IOrgChartItem> = [];
             var count: number;
 
-            orgChartNodes = this.state.StateChartItemGUIDNode;
+            //orgChartNodes = this.state.StateChartItemGUIDNode;
 
             for (var i = 0; i < properties.length; i++) {
 
@@ -839,10 +964,25 @@ export default class OrganisationalChart extends React.Component<IOrganisational
               emailID)
             );
 
-            //this.setState({ StateChartItemGUIDNode: ChartItemGUIDNode });
-            this.setState({ StateChartItemGUIDNode: orgChartNodes });
+            ChartItemIDNode.push(new ChartItem(
+              ID,
+              userName,
+              imgURL,
+              parent_guid,
+              jobTitle,
+              "Managers",
+              department,
+              emailID)
+            );
+
+
+
+            this.setState({ DirectReportUser: ChartItemIDNode });
+
+            //this.setState({ StateChartItemGUIDNode: orgChartNodes });
 
             var result = [];
+            //This function is using duplicate value in the array object
             jquery.each(this.state.StateChartItemGUIDNode, (ii, e) => {
               var matchingItems = jquery.grep(result, (item) => {
                 return item["EmpEmail"] === e["EmpEmail"];
@@ -855,6 +995,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             }
             console.log(this.state.StateChartItemGUIDNode);
 
+            //#region
             //ChartItemGUIDNode1[0].Peers = response.Peers;
 
             //this.setState({ ManagerSetIdForExpand: managerid });
@@ -869,7 +1010,8 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             // this.setState({
             //   orgChartItems: JSON.parse(output)
             // });
-            debugger;
+            //#endregion
+
             let relevantResults: any = response.value;
             resolve(response);
           }, (error: any): void => {
@@ -901,7 +1043,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             userManagerID = property.Value;
           }
         }
-        debugger;
+
 
         this.readOrgChartItemsMiddleUpNext(userManagerID)
           .then((orgChartItemsMiddle: IOrgChartItem[]) => {
@@ -929,8 +1071,6 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                   }
 
                   for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
-
-
                     orgChartNodes.push(new ChartItem(
                       this.state.StateChartItemGUIDNode[count]["id"],
                       this.state.StateChartItemGUIDNode[count]["title"],
@@ -942,12 +1082,11 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                       this.state.StateChartItemGUIDNode[count]["EmpEmail"]
                     ));
 
-
                     //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
                     // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
                     //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
                   }
-                  debugger;
+
                   this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
                   //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
                   this.setState({ OrgChartNodesArray: orgChartNodes });
@@ -955,16 +1094,14 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                   //this.CountDepthLevel(orgChartNodes);
 
                   var arrayToTree: any = require('array-to-tree');
-                  debugger;
+
                   var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
-                  debugger;
+
 
                   var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
                   this.setState({
                     orgChartItems: JSON.parse(output)
                   });
-                  debugger;
-
 
 
                   //#region 
@@ -1101,7 +1238,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
           })
           .then((response): void => {
 
-            debugger;
+
 
             // this.setState({ ManagerID: managerID });
             // console.log(this.state.ManagerID)
@@ -1121,7 +1258,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
     // else {
     //   url = `${this.props.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('Employees')/items?&$select=Title,Id,EmpEmail,JobTitle,Department,Managers,Managers/ID&$expand=Managers/ID&$orderby=Title asc&$filter=ID eq ${managerAsUserid}`;
     // }
-    debugger;
+
     url = "" + this.props.pageContext.web.absoluteUrl
       + "/_api/SP.UserProfiles.PeopleManager/GetPropertiesFor(accountName=@v)?@v='"
       + encodeURIComponent('' + managerAsUserid + '') + "'";
@@ -1140,7 +1277,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             return response.json();
           })
           .then((response): void => {
-            debugger;
+
 
             // this.setState({ ManagerID: managerID });
             // console.log(this.state.ManagerID)
@@ -1250,6 +1387,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
           })
           .then((response): void => {
 
+
             let relevantResults: any = response.value;
             // this.setState({ ManagerID: managerID });
             // console.log(this.state.ManagerID)
@@ -1318,6 +1456,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
 
   private async readOrgChartItems(managerEmailID): Promise<IOrgChartItem[]> {
 
+
     let url = "" + this.props.pageContext.web.absoluteUrl
       + "/_api/SP.UserProfiles.PeopleManager/GetPropertiesFor(accountName=@v)?@v='"
       + encodeURIComponent('' + managerEmailID + '') + "'";
@@ -1333,7 +1472,6 @@ export default class OrganisationalChart extends React.Component<IOrganisational
               'odata-version': ''
             }
           }).
-
           // }).then((response: SPHttpClientResponse): Promise<{ value: IOrgChartItem[] }> => {
           //   
           //   return response.json();
@@ -1345,7 +1483,6 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             return response.json();
           })
           .then((response): void => {
-
 
             //var userDisplayName = response.d.DisplayName;
             //var AccountName = response.d.AccountName;
@@ -1361,7 +1498,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             let peers: any;
             let ID: number;
 
-            let properties = response.UserProfileProperties;
+
             peers = response.Peers;
             let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
             let ChartItemGUIDNode: Array<ChartItemGUID> = [];
@@ -1369,7 +1506,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             var count: number;
 
             orgChartNodes = this.state.StateChartItemGUIDNode;
-
+            let properties = response.UserProfileProperties;
             for (var i = 0; i < properties.length; i++) {
 
               var property = properties[i];
@@ -1394,13 +1531,9 @@ export default class OrganisationalChart extends React.Component<IOrganisational
               if (property.Key == "SPS-SharePointHomeExperienceState") {
                 ID = property.Value;
               }
-
             }
 
-
-            debugger;
             parent_guid = this.state.StateChartItemGUIDNode[0].id;
-
 
             orgChartNodes.push(new ChartItem(
               ID,
@@ -1413,14 +1546,12 @@ export default class OrganisationalChart extends React.Component<IOrganisational
               emailID)
             );
 
-
             //this.setState({ StateChartItemGUIDNode: ChartItemGUIDNode });
             this.setState({ StateChartItemGUIDNode: orgChartNodes });
 
             console.log(this.state.StateChartItemGUIDNode);
 
             //ChartItemGUIDNode1[0].Peers = response.Peers;
-
             //this.setState({ ManagerSetIdForExpand: managerid });
             // this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
             // //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
@@ -1543,7 +1674,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
 
                   let properties1 = responseData;
                   //properties = response.UserProfileProperties;
-                  debugger;
+
 
 
                   for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
@@ -1568,7 +1699,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                     // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
                     // `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
                   }
-                  debugger;
+
 
 
                   this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
@@ -1578,17 +1709,17 @@ export default class OrganisationalChart extends React.Component<IOrganisational
                   //this.CountDepthLevel(orgChartNodes);
 
                   var arrayToTree: any = require('array-to-tree');
-                  debugger;
+
 
                   var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
-                  debugger;
+
 
 
                   var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
                   this.setState({
                     orgChartItems: JSON.parse(output)
                   });
-                  debugger;
+
                 });
             });
 
@@ -1604,9 +1735,7 @@ export default class OrganisationalChart extends React.Component<IOrganisational
       });
   }
 
-
   private async readOrgChartItemsArray(managerEmailID): Promise<IOrgChartItem[]> {
-
 
     let managerEmailID1 = "charan.sodhi@evolvous.com";
     return await new Promise<IOrgChartItem[]>(
@@ -1633,7 +1762,6 @@ export default class OrganisationalChart extends React.Component<IOrganisational
             return response.json();
           })
           .then((response): void => {
-
 
             let imgURL: string;
             let userName: string;
@@ -1689,22 +1817,18 @@ export default class OrganisationalChart extends React.Component<IOrganisational
               department,
               emailID)
             );
-
-
             // this.state.orgChartHoldNodesArrow.push(ChartItemGUIDNode);
 
-
             this.setState({ StateChartItemGUIDNode: ChartItemGUIDNode });
+
             //this.setState({ StateChartItemGUIDNode: orgChartHoldNodesArrow });
             //this.setState({ StateChartItemGUIDNode: ChartItemGUIDNode });
-
             //var properties = response.UserProfileProperties;
-            var peers = response.Peers;
 
+            var peers = response.Peers;
 
             //this.setState({ ManagerSetIdForExpand: managerEmailID });
             this.setState({ ManagerSetIdForExpandEmailID: this.state.StateChartItemGUIDNode[0].EmpEmail });
-
 
             let relevantResults: any = response.value;
             resolve(response.value);
@@ -1719,90 +1843,136 @@ export default class OrganisationalChart extends React.Component<IOrganisational
     this.readOrgChartItemsID().then((orgChartItemsOutter: IOrgChartItem[]) => {
 
       let peers = orgChartItemsOutter["DirectReports"];
-
-      peers.forEach((elementRow) => {
-
-        this.readOrgChartItems(elementRow).then((orgChartItemsInner: IOrgChartItem[]) => {
-
+      // Method will add
+      if (peers.length > 0) {
+        peers.forEach((elementRow) => {
 
 
-          // if (orgChartItemsOutter.length > 0) {
-          //   orgChartNodes.push(new ChartItem(
-          //     orgChartItemsOutter[0].Id,
-          //     orgChartItemsOutter[0]["Title"],
-          //     "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
-          //     undefined,
-          //     orgChartItemsOutter[0]["JobTitle"],
-          //     orgChartItemsOutter[0]["Manager"],
-          //     orgChartItemsOutter[0]["Department"],
-          //     orgChartItemsOutter[0]["EmpEmail"]));
-
-          //   if (orgChartItems.length > 1)
-          //     orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-          //       `#CollapseContentSingle${orgChartItemsOutter[0].Id}`, "StockDown"));
-          //   else {
-          //     orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-          //       `#CollapseContentSingle${orgChartItemsOutter[0].Id}`, "StockDown"));
-          //   }
-          //   //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-          // }
-
-          // peers.forEach((elementEmail) => {
-
-          //     this.readOrgChartItemsArray(elementEmail)
-          //       .then((response) => {
-
-          //         JSON.stringify(response);
-          //         return JSON.stringify(response);
-          //       }).then((responseData) => {
-
-          //         var properties = responseData
-
-          //       });
-          //   });
-          let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
-          let orgChartNodes: Array<ChartItem> = [];
-          var count: number;
-          for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
+          this.readOrgChartItems(elementRow).then((orgChartItemsInner: IOrgChartItem[]) => {
 
 
-            orgChartNodes.push(new ChartItem(
-              this.state.StateChartItemGUIDNode[count]["id"],
-              this.state.StateChartItemGUIDNode[count]["title"],
-              this.state.StateChartItemGUIDNode[count]["Url"],
-              this.state.StateChartItemGUIDNode[count]["parent_id"],
-              this.state.StateChartItemGUIDNode[count]["JobTitle"],
-              this.state.StateChartItemGUIDNode[count]["Manager"],
-              this.state.StateChartItemGUIDNode[count]["Department"],
-              this.state.StateChartItemGUIDNode[count]["EmpEmail"]
-            ));
+            //#region
+            // if (orgChartItemsOutter.length > 0) {
+            //   orgChartNodes.push(new ChartItem(
+            //     orgChartItemsOutter[0].Id,
+            //     orgChartItemsOutter[0]["Title"],
+            //     "https://evolvous.sharepoint.com/_vti_bin/DelveApi.ashx/people/profileimage?userId=accounts@evolvous.com",
+            //     undefined,
+            //     orgChartItemsOutter[0]["JobTitle"],
+            //     orgChartItemsOutter[0]["Manager"],
+            //     orgChartItemsOutter[0]["Department"],
+            //     orgChartItemsOutter[0]["EmpEmail"]));
+
+            //   if (orgChartItems.length > 1)
+            //     orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+            //       `#CollapseContentSingle${orgChartItemsOutter[0].Id}`, "StockDown"));
+            //   else {
+            //     orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+            //       `#CollapseContentSingle${orgChartItemsOutter[0].Id}`, "StockDown"));
+            //   }
+            //   //this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+            // }
+
+            // peers.forEach((elementEmail) => {
+
+            //     this.readOrgChartItemsArray(elementEmail)
+            //       .then((response) => {
+
+            //         JSON.stringify(response);
+            //         return JSON.stringify(response);
+            //       }).then((responseData) => {
+
+            //         var properties = responseData
+
+            //       });
+            //   });
+            //#endregion
+
+            let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
+            let orgChartNodes: Array<ChartItem> = [];
+            var count: number;
+            for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
+
+              orgChartNodes.push(new ChartItem(
+                this.state.StateChartItemGUIDNode[count]["id"],
+                this.state.StateChartItemGUIDNode[count]["title"],
+                this.state.StateChartItemGUIDNode[count]["Url"],
+                this.state.StateChartItemGUIDNode[count]["parent_id"],
+                this.state.StateChartItemGUIDNode[count]["JobTitle"],
+                this.state.StateChartItemGUIDNode[count]["Manager"],
+                this.state.StateChartItemGUIDNode[count]["Department"],
+                this.state.StateChartItemGUIDNode[count]["EmpEmail"]
+              ));
+
+              //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
+              // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+              //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+            }
+
+            this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+            //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+            this.setState({ OrgChartNodesArray: orgChartNodes });
+            console.log("2: " + this.state.OrgChartNodesArray);
+            //this.CountDepthLevel(orgChartNodes);
+
+            var arrayToTree: any = require('array-to-tree');
+
+            var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
 
 
-            //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
-            // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
-            //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
-          }
-          debugger;
-          this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
-          //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
-          this.setState({ OrgChartNodesArray: orgChartNodes });
-          console.log("2: " + this.state.OrgChartNodesArray);
-          //this.CountDepthLevel(orgChartNodes);
+            var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
+            this.setState({
+              orgChartItems: JSON.parse(output)
+            });
 
-          var arrayToTree: any = require('array-to-tree');
-          debugger;
-          var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
-          debugger;
-
-          var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
-          this.setState({
-            orgChartItems: JSON.parse(output)
+            //this.setState({ loadUpNext: false });
+            //this.pow(orgChartHierarchyNodes[0]);
           });
-          debugger;
-          //this.setState({ loadUpNext: false });
-          //this.pow(orgChartHierarchyNodes[0]);
         });
-      });
+      }
+      else {
+        this._userHasNoManager();
+      }
+    });
+
+  }
+
+  private _userHasNoManager = () => {
+    let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
+    let orgChartNodes: Array<ChartItem> = [];
+    var count: number;
+    for (count = 0; count < this.state.StateChartItemGUIDNode.length; count++) {
+
+      orgChartNodes.push(new ChartItem(
+        this.state.StateChartItemGUIDNode[count]["id"],
+        this.state.StateChartItemGUIDNode[count]["title"],
+        this.state.StateChartItemGUIDNode[count]["Url"],
+        this.state.StateChartItemGUIDNode[count]["parent_id"],
+        this.state.StateChartItemGUIDNode[count]["JobTitle"],
+        this.state.StateChartItemGUIDNode[count]["Manager"],
+        this.state.StateChartItemGUIDNode[count]["Department"],
+        this.state.StateChartItemGUIDNode[count]["EmpEmail"]
+      ));
+
+      //let orgChartHoldNodesArrow: Array<HoldChartItemArrow> = [];
+      // orgChartHoldNodesArrow.push(new HoldChartItemArrow(
+      //   `#CollapseContentSingle${orgChartItems[count].Id}`, "StockDown"));
+    }
+
+    this.setState({ StockDownUserIdValue: orgChartHoldNodesArrow });
+    //this.setState({ LoadUpNextUser: orgChartItemsOutter[0]["EmpEmail"] });
+    this.setState({ OrgChartNodesArray: orgChartNodes });
+    console.log("2: " + this.state.OrgChartNodesArray);
+    //this.CountDepthLevel(orgChartNodes);
+
+    var arrayToTree: any = require('array-to-tree');
+
+    var orgChartHierarchyNodes: any = arrayToTree(orgChartNodes);
+
+
+    var output: any = JSON.stringify(orgChartHierarchyNodes[0]);
+    this.setState({
+      orgChartItems: JSON.parse(output)
     });
 
   }
@@ -1833,13 +2003,14 @@ export default class OrganisationalChart extends React.Component<IOrganisational
 
     this.processOrgChartItems();
   }
+
   // @autobind
   private _onFilterChanged = (filterText: string, currentPersonas: IPersonaProps[], limitResults?: number) => {
     let _peopleList1 = [];
     if (filterText) {
       if (filterText.length > 0) {
 
-        console.log("Textbox value:2 " + this.state.textSearchUserValue);
+        //console.log("Textbox value:2 " + this.state.textSearchUserValue);
         if (this.state.textSearchUserValue.length > 0) {
           return [];// this.SearchPeople(filterText);//_peopleList1;
         }
